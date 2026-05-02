@@ -9,11 +9,11 @@ Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
 
 | Module | Owner | Status |
 |---|---|---|
-| Overview | Pranshu | stub |
+| Overview | Mohan | stub |
 | Demand Explorer | Mohan | in progress |
-| Grid Stress | Mohan | stub |
-| Renewable Mismatch | Neel | stub |
-| Forecasting | (held) | stub |
+| Grid Stress | Neel | stub |
+| Renewable Mismatch | Pranshu | stub |
+| Forecasting | Mohan | stub |
 
 ## Architecture
 
