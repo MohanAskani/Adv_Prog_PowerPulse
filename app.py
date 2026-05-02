@@ -34,7 +34,7 @@ pages = {
         st.Page("pages/4_renewable_mismatch.py", title="Renewable Mismatch"),
     ],
     "Forecast": [
-        st.Page("pages/5_forecasting.py", title="Forecasting (held)"),
+        st.Page("pages/5_forecasting.py", title="Forecasting"),
     ],
 }
 
