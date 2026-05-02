@@ -13,7 +13,7 @@ Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
 | Demand Explorer | Mohan | in progress |
 | Grid Stress | Neel | stub |
 | Renewable Mismatch | Pranshu | stub |
-| Forecasting | Mohan | stub |
+| Forecasting | Mohan | in progress |
 
 ## Architecture
 
@@ -45,16 +45,33 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# one-time: build aggregates from the source files
+# run the app with the committed aggregate data
+streamlit run app.py
+```
+
+The app should open at `http://localhost:8501`. The committed Parquet files under `data/aggregates/` are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning.
+
+## Rebuild Aggregates
+
+Only rebuild aggregates if the raw demand or population source files change.
+
+```bash
 # expected next to the repo root:
 # - historic_load_hourly_2016_2023_county.h5
 # - co-est2024-pop.xlsx
 # - owid-energy-datav2.csv
 # - counties.geojson
 python scripts/build_aggregates.py
+```
 
-# run the app
-streamlit run app.py
+## Optional Source Files
+
+Some geography and cross-country context views use shared source files outside the repo:
+
+```bash
+# expected next to the repo root:
+# - owid-energy-datav2.csv
+# - counties.geojson
 ```
 
 ## Local Run
@@ -63,10 +80,8 @@ If you already have a virtual environment, you can reuse it:
 
 ```bash
 source .venv/bin/activate
-.venv/bin/streamlit run app.py
+.venv/bin/python -m streamlit run app.py
 ```
-
-The app should open at `http://localhost:8501`.
 
 ## Notes for the team
 
@@ -74,3 +89,4 @@ The app should open at `http://localhost:8501`.
 - The midterm code dropped Autauga County (`p01001`) by mistake (`df.iloc[:, 1:]` on an index-only DataFrame). The ETL here uses **all 3,109 counties** so national totals will differ slightly from the midterm report.
 - All chart functions live in `powerpulse/viz.py` so the four pages share a consistent style.
 - The committed parquet files under `data/aggregates/` let teammates run the app immediately after cloning; regenerate them with `python scripts/build_aggregates.py` if the source data changes.
+- Forecasting uses `scikit-learn` gradient boosting with daily average load, calendar seasonality, lag features, and a 2023 backtest against simple baselines.
