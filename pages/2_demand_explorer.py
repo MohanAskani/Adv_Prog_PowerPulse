@@ -248,7 +248,7 @@ with st.container(border=True):
                     yearly_energy,
                     title=f"Annual electricity demand for {label}",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Hourly demand distribution: the spread of hourly values within each year, useful for spotting wider peaks and variability.")
@@ -257,7 +257,7 @@ with st.container(border=True):
                     yearly_box,
                     title=f"Hourly demand distribution by year for {label}",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
         if len(yearly_energy) >= 2:
@@ -281,7 +281,7 @@ with st.container(border=True):
                     yearly_energy_state,
                     title=f"Annual electricity demand by state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Hourly demand distribution: the spread of hourly values by state, useful for spotting wider peaks and variability.")
@@ -290,7 +290,7 @@ with st.container(border=True):
                     yearly_box_state,
                     title="Hourly demand distribution by state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
 
@@ -318,7 +318,7 @@ with st.container(border=True):
         )
 
     chart_definition("Daily cycle: average demand by hour of day, either as a combined view or one line per state.")
-    st.plotly_chart(cycle_fig, use_container_width=True)
+    st.plotly_chart(cycle_fig, width='stretch')
 
     daily_aggregate = hour_of_day_average(filtered, aggregator="sum")
     peak_hour = int(daily_aggregate.idxmax())
@@ -355,7 +355,7 @@ with st.container(border=True):
                     ww_frame,
                     title="Average hourly demand: weekday vs weekend",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Weekday gap: the difference between weekday and weekend demand at each hour, in GW.")
@@ -364,7 +364,7 @@ with st.container(border=True):
                     ww_frame,
                     title="Weekday minus weekend demand by hour",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
         ww_metrics = st.columns(3)
@@ -379,7 +379,7 @@ with st.container(border=True):
                 ww_state,
                 title="Weekday vs weekend demand by state",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -404,7 +404,7 @@ with st.container(border=True):
                     monthly,
                     title="Average demand by month",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Seasonal bar: average demand grouped into winter, spring, summer, and autumn.")
@@ -413,7 +413,7 @@ with st.container(border=True):
                     seasonal,
                     title="Average demand by season",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
         month_names = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
@@ -431,7 +431,7 @@ with st.container(border=True):
                     monthly_state,
                     title="Average demand by month and state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Seasonal bar: average demand by season, grouped by state.")
@@ -440,7 +440,7 @@ with st.container(border=True):
                     seasonal_state,
                     title="Average demand by season and state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
 
@@ -465,7 +465,7 @@ with st.container(border=True):
                     heatmap,
                     title="Average demand heatmap by month and hour",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Monthly boxplot: the distribution of hourly demand within each month.")
@@ -474,7 +474,7 @@ with st.container(border=True):
                     month_box,
                     title="Hourly demand distribution by month",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
     else:
         state_list = states_for_query[:4]
@@ -488,7 +488,7 @@ with st.container(border=True):
                         month_hour_heatmap(filtered[[state]]),
                         title=f"Month-hour demand for {state}",
                     ),
-                    use_container_width=True,
+                    width='stretch',
                 )
         chart_definition("Boxplot: hourly demand distribution split by state.")
         st.plotly_chart(
@@ -496,7 +496,7 @@ with st.container(border=True):
                 yearly_boxplot_by_state(filtered),
                 title="Hourly demand distribution by state",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
 
@@ -523,7 +523,7 @@ with st.container(border=True):
                     volatility,
                     title="Yearly demand volatility",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Annual peaks: the highest hourly demand reached in each year.")
@@ -532,7 +532,7 @@ with st.container(border=True):
                     annual_peaks,
                     title="Annual peak hourly demand",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
     else:
         volatility_state = annual_volatility_by_state(filtered)
@@ -545,7 +545,7 @@ with st.container(border=True):
                     volatility_state,
                     title="Yearly demand volatility by state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("Annual peaks: the highest hourly demand reached in each year, split by state.")
@@ -554,7 +554,7 @@ with st.container(border=True):
                     peaks_state,
                     title="Annual peak hourly demand by state",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
     vol_metrics = st.columns(3)
@@ -612,11 +612,11 @@ with st.container(border=True):
                     county_top.assign(avg_demand_gw=county_top["avg_demand_gw"]),
                     title="Top 10 counties by average demand",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("County distribution: how average demand is spread across all counties.")
-            st.plotly_chart(county_hist, use_container_width=True)
+            st.plotly_chart(county_hist, width='stretch')
 
         chart_definition("County map: average electricity demand by county across the U.S.")
         st.plotly_chart(
@@ -627,7 +627,7 @@ with st.container(border=True):
                 color_col="avg_demand_gw",
                 color_bar_title="GW",
             ),
-            use_container_width=True,
+            width='stretch',
         )
 
         state_left, state_right = st.columns(2)
@@ -640,7 +640,7 @@ with st.container(border=True):
                     title="Average electricity demand by state",
                     color_bar_title="GW",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with state_right:
             chart_definition("Per-capita state map: average demand normalized by population.")
@@ -651,7 +651,7 @@ with st.container(border=True):
                     title="Demand per 100k residents by state",
                     color_bar_title="GW / 100k people",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
 
         state_rank = state_geo.sort_values("demand_per_100k_gw", ascending=False)[["state", "demand_per_100k_gw", "avg_demand_gw"]].head(10)
@@ -663,7 +663,7 @@ with st.container(border=True):
                     "avg_demand_gw": "Average demand (GW)",
                 }
             ),
-            use_container_width=True,
+            width='stretch',
             height=280,
         )
 
@@ -713,7 +713,7 @@ with st.container(border=True):
                     countries=countries_for_plot,
                     title="Electricity use per capita over time",
                 ),
-                use_container_width=True,
+                width='stretch',
             )
         with right:
             chart_definition("GDP vs electricity: each point is a country in the latest year with complete GDP and electricity data.")
@@ -725,7 +725,7 @@ with st.container(border=True):
                         latest_subset,
                         title=f"GDP per capita vs electricity per capita ({scatter_year})",
                     ),
-                    use_container_width=True,
+                    width='stretch',
                 )
 
         country_metrics = st.columns(3)
