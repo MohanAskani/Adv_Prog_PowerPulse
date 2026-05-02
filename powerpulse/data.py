@@ -25,6 +25,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = PROJECT_ROOT.parent
 AGGREGATES_DIR = PROJECT_ROOT / "data" / "aggregates"
+EXTERNAL_DATA_DIR = PROJECT_ROOT / "data" / "external"
 
 STATE_HOURLY_PARQUET = AGGREGATES_DIR / "state_hourly.parquet"
 COUNTY_SUMMARY_PARQUET = AGGREGATES_DIR / "county_summary.parquet"
@@ -61,11 +62,11 @@ def _missing_file_message(path: Path, hint: str) -> str:
 
 
 def _resolve_source_file(filename: str) -> Path:
-    """Look for shared course data in the repo root or its parent folder."""
-    for candidate in (PROJECT_ROOT / filename, DATA_ROOT / filename):
+    """Look for shared data in committed app data first, then local fallbacks."""
+    for candidate in (EXTERNAL_DATA_DIR / filename, PROJECT_ROOT / filename, DATA_ROOT / filename):
         if candidate.exists():
             return candidate
-    return DATA_ROOT / filename
+    return EXTERNAL_DATA_DIR / filename
 
 
 @_cache_data(show_spinner="Loading state-hourly demand...")
@@ -141,7 +142,7 @@ def load_country_energy(_mtime: float | None = None) -> pd.DataFrame:
         raise FileNotFoundError(
             _missing_file_message(
                 country_path,
-                "Place owid-energy-datav2.csv one directory above the repo root.",
+                "Place owid-energy-datav2.csv under data/external/ or one directory above the repo root.",
             )
         )
     return pd.read_csv(country_path)
@@ -164,7 +165,7 @@ def load_counties_geojson(_mtime: float | None = None) -> dict[str, Any]:
         raise FileNotFoundError(
             _missing_file_message(
                 geojson_path,
-                "Place counties.geojson one directory above the repo root.",
+                "Place counties.geojson under data/external/ or one directory above the repo root.",
             )
         )
     return json.loads(geojson_path.read_text())

@@ -33,6 +33,7 @@ powerpulse/
 │   └── build_aggregates.py      # one-time ETL: h5 → parquet
 ├── data/
 │   └── aggregates/              # baked parquets committed for easy setup
+│   └── external/                # small shared files needed in cloud deploys
 ├── requirements.txt
 └── .streamlit/config.toml
 ```
@@ -49,7 +50,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app should open at `http://localhost:8501`. The committed Parquet files under `data/aggregates/` are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning.
+The app should open at `http://localhost:8501`. The committed files under `data/aggregates/` and `data/external/` are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning or on Streamlit Community Cloud.
 
 ## Rebuild Aggregates
 
@@ -62,16 +63,6 @@ Only rebuild aggregates if the raw demand or population source files change.
 # - owid-energy-datav2.csv
 # - counties.geojson
 python scripts/build_aggregates.py
-```
-
-## Optional Source Files
-
-Some geography and cross-country context views use shared source files outside the repo:
-
-```bash
-# expected next to the repo root:
-# - owid-energy-datav2.csv
-# - counties.geojson
 ```
 
 ## Local Run
