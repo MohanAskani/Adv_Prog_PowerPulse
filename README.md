@@ -11,13 +11,15 @@ Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
 |---|---|---|
 | Overview | Mohan | stub |
 | Demand Explorer | Mohan | in progress |
-| Grid Stress | Neel | stub |
+| Grid Stress | Neel | in progress |
 | Renewable Mismatch | Pranshu | stub |
 | Forecasting | Mohan | in progress |
 
 ## Architecture
 
 The app **never reads the raw 1.7 GB HDF5 file at runtime**. A one-time ETL (`scripts/build_aggregates.py`) reads `historic_load_hourly_2016_2023_county.h5`, joins counties to states via `national_county.txt`, and emits Parquet aggregates under `data/aggregates/`. Pages load only those Parquets, gated through `@st.cache_data` in `powerpulse/data.py`. This keeps page interactions snappy.
+
+The Grid Stress page also uses `data/aggregates/generation_monthly.parquet`, a compact monthly state-level aggregate built from `monthly_gen_2001_24.xlsx`. It is used as supply context only; the stress score itself is demand-based.
 
 ```
 powerpulse/
@@ -63,6 +65,9 @@ Only rebuild aggregates if the raw demand or population source files change.
 # - owid-energy-datav2.csv
 # - counties.geojson
 python scripts/build_aggregates.py
+
+# optional: rebuild monthly generation context
+python scripts/build_generation_monthly.py
 ```
 
 ## Local Run
@@ -81,3 +86,4 @@ source .venv/bin/activate
 - All chart functions live in `powerpulse/viz.py` so the four pages share a consistent style.
 - The committed parquet files under `data/aggregates/` let teammates run the app immediately after cloning; regenerate them with `python scripts/build_aggregates.py` if the source data changes.
 - Forecasting uses `scikit-learn` gradient boosting with daily average load, calendar seasonality, lag features, and a 2023 backtest against simple baselines.
+- Grid Stress uses a transparent 0-100 score from hourly demand: peak intensity, volatility, seasonal extremes, ramp severity, and near-peak persistence. Monthly generation adds total/renewable/fossil context, but it is not treated as hourly reliability data.
