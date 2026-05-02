@@ -50,7 +50,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app should open at `http://localhost:8501`. The committed files under `data/aggregates/` and `data/external/` are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning or on Streamlit Community Cloud.
+The app should open at `http://localhost:8501`. The committed files under `data/aggregates/`, `data/external/`, and the repo-root compatibility copies are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning or on Streamlit Community Cloud.
 
 ## Rebuild Aggregates
 
