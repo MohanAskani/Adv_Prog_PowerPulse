@@ -1,0 +1,16 @@
+[server]
+# Local dev: keep file watcher fast; don't open a browser tab automatically
+headless = false
+runOnSave = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# Subtle, neutral theme so charts pop
+base = "light"
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f7fa"
+textColor = "#1a1a1a"
+font = "sans serif"

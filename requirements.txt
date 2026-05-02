@@ -1,0 +1,18 @@
+# PowerPulse - Streamlit app dependencies
+# Pin to known-good versions to avoid surprises before submission
+
+streamlit>=1.30,<2.0
+pandas>=2.1,<3.0
+numpy>=1.26,<3.0
+plotly>=5.18,<6.0
+pyarrow>=14.0          # parquet engine
+tables>=3.9            # required by pandas read_hdf for the source .h5 (ETL only)
+h5py>=3.10             # used by ETL for direct schema introspection
+openpyxl>=3.1          # used by ETL for county population Excel workbooks
+
+# Forecasting (held — uncomment when needed)
+# statsmodels>=0.14
+
+# Geo (Renewable Mismatch + maps — uncomment when needed)
+# geopandas>=0.14
+# shapely>=2.0

@@ -1,0 +1,17 @@
+# Virtual envs
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Streamlit cache
+.streamlit/secrets.toml
+
+# Baked aggregates can be regenerated from the h5 — exclude from VCS
+data/aggregates/*.parquet
