@@ -40,17 +40,33 @@ powerpulse/
 ## Setup
 
 ```bash
-# from this directory (powerpulse/)
+# from this directory (repo root)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# one-time: build aggregates from the h5 file (sits one level up)
+# one-time: build aggregates from the source files
+# expected next to the repo root:
+# - historic_load_hourly_2016_2023_county.h5
+# - co-est2024-pop.xlsx
+# - owid-energy-datav2.csv
+# - counties.geojson
 python scripts/build_aggregates.py
 
 # run the app
 streamlit run app.py
 ```
+
+## Local Run
+
+If you already have a virtual environment, you can reuse it:
+
+```bash
+source .venv/bin/activate
+.venv/bin/streamlit run app.py
+```
+
+The app should open at `http://localhost:8501`.
 
 ## Notes for the team
 
