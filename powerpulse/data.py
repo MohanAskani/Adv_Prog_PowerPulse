@@ -30,6 +30,7 @@ EXTERNAL_DATA_DIR = PROJECT_ROOT / "data" / "external"
 STATE_HOURLY_PARQUET = AGGREGATES_DIR / "state_hourly.parquet"
 COUNTY_SUMMARY_PARQUET = AGGREGATES_DIR / "county_summary.parquet"
 STATE_SUMMARY_PARQUET = AGGREGATES_DIR / "state_summary.parquet"
+GENERATION_MONTHLY_PARQUET = AGGREGATES_DIR / "generation_monthly.parquet"
 
 COUNTRY_ENERGY_CSV = DATA_ROOT / "owid-energy-datav2.csv"
 COUNTIES_GEOJSON = DATA_ROOT / "counties.geojson"
@@ -132,6 +133,24 @@ def load_state_summary(_mtime: float | None = None) -> pd.DataFrame:
 def get_state_summary() -> pd.DataFrame:
     """Cached state summary with a cache key tied to the parquet mtime."""
     return load_state_summary(_file_mtime(STATE_SUMMARY_PARQUET))
+
+
+@_cache_data(show_spinner="Loading monthly generation...")
+def load_generation_monthly(_mtime: float | None = None) -> pd.DataFrame:
+    """Monthly state-level generation by total, renewable, and fossil buckets."""
+    if not GENERATION_MONTHLY_PARQUET.exists():
+        raise FileNotFoundError(
+            _missing_file_message(
+                GENERATION_MONTHLY_PARQUET,
+                "Build data/aggregates/generation_monthly.parquet from monthly_gen_2001_24.xlsx.",
+            )
+        )
+    return pd.read_parquet(GENERATION_MONTHLY_PARQUET)
+
+
+def get_generation_monthly() -> pd.DataFrame:
+    """Cached monthly generation aggregate with a cache key tied to mtime."""
+    return load_generation_monthly(_file_mtime(GENERATION_MONTHLY_PARQUET))
 
 
 @_cache_data(show_spinner="Loading country energy data...")

@@ -15,3 +15,4 @@ __pycache__/
 
 # Baked aggregates can be regenerated from the h5 — exclude from VCS
 data/aggregates/*.parquet
+!data/aggregates/generation_monthly.parquet
