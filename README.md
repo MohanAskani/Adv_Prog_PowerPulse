@@ -17,7 +17,7 @@ Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
 
 ## Architecture
 
-The app **never reads the raw 1.7 GB HDF5 file at runtime**. A one-time ETL (`scripts/build_aggregates.py`) reads `historic_load_hourly_2016_2023_county.h5`, joins counties to states via `national_county.txt`, and emits Parquet aggregates under `data/aggregates/`. Pages load only those Parquets, gated through `@st.cache_data` in `powerpulse/data.py`. This is the only way to keep page interactions snappy.
+The app **never reads the raw 1.7 GB HDF5 file at runtime**. A one-time ETL (`scripts/build_aggregates.py`) reads `historic_load_hourly_2016_2023_county.h5`, joins counties to states via `national_county.txt`, and emits Parquet aggregates under `data/aggregates/`. Pages load only those Parquets, gated through `@st.cache_data` in `powerpulse/data.py`. This keeps page interactions snappy.
 
 ```
 powerpulse/
@@ -32,7 +32,7 @@ powerpulse/
 ├── scripts/
 │   └── build_aggregates.py      # one-time ETL: h5 → parquet
 ├── data/
-│   └── aggregates/              # baked parquets (git-ignored if large)
+│   └── aggregates/              # baked parquets committed for easy setup
 ├── requirements.txt
 └── .streamlit/config.toml
 ```
@@ -73,3 +73,4 @@ The app should open at `http://localhost:8501`.
 - **Timestamps are UTC** in the source h5. The Demand Explorer currently uses UTC hour-of-day; converting to local time per state is on the backlog.
 - The midterm code dropped Autauga County (`p01001`) by mistake (`df.iloc[:, 1:]` on an index-only DataFrame). The ETL here uses **all 3,109 counties** so national totals will differ slightly from the midterm report.
 - All chart functions live in `powerpulse/viz.py` so the four pages share a consistent style.
+- The committed parquet files under `data/aggregates/` let teammates run the app immediately after cloning; regenerate them with `python scripts/build_aggregates.py` if the source data changes.
