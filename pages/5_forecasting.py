@@ -432,11 +432,11 @@ with st.container(border=True):
     left, right = st.columns([0.9, 1.4])
     with left:
         st.caption("MAPE and MAE compare predicted daily average load against observed 2023 values; lower is better.")
-        st.dataframe(scores.style.format({"MAPE": "{:.1f}%", "MAE": "{:.2f}"}), use_container_width=True, hide_index=True)
+        st.dataframe(scores.style.format({"MAPE": "{:.1f}%", "MAE": "{:.2f}"}), width='stretch', hide_index=True)
         st.caption("Gradient boosting features: trend, weekday dummies, annual Fourier seasonality, lags 1/2/7/14/28, and 7/14-day rolling means.")
     with right:
         st.caption("Black is observed 2023 daily load; blue is gradient boosting; dashed lines are baseline methods.")
-        st.plotly_chart(_holdout_figure(holdout_frame, region_label), use_container_width=True)
+        st.plotly_chart(_holdout_figure(holdout_frame, region_label), width='stretch')
 
 with st.container(border=True):
     section_header(
@@ -444,4 +444,4 @@ with st.container(border=True):
         "The gradient boosting model is refit through the latest available day and projected forward recursively.",
     )
     st.caption("The shaded band is a simple residual-based uncertainty range, not an operational reliability interval.")
-    st.plotly_chart(_future_figure(series, future_forecast, residual_std, region_label), use_container_width=True)
+    st.plotly_chart(_future_figure(series, future_forecast, residual_std, region_label), width='stretch')
