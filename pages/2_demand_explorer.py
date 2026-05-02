@@ -25,18 +25,25 @@ from powerpulse.data import (
 from powerpulse.transforms import (
     aggregate_total_series,
     annual_peak_gw,
+    annual_peak_by_state,
     annual_volatility_gw,
+    annual_volatility_by_state,
     country_comparison_frame,
     extreme_hours_frame,
     filter_states_years,
     hour_of_day_average,
     hour_of_day_per_state,
     month_hour_heatmap,
+    monthly_average_by_state,
     monthly_average_gw,
     monthly_boxplot_frame,
+    seasonal_average_by_state,
     seasonal_average_gw,
+    weekday_weekend_by_state,
     weekday_weekend_hourly,
+    yearly_boxplot_by_state,
     yearly_boxplot_frame,
+    yearly_energy_by_state,
     yearly_energy_twh,
 )
 from powerpulse.viz import (
@@ -47,15 +54,22 @@ from powerpulse.viz import (
     hour_of_day_total,
     month_boxplot,
     month_hour_heatmap as viz_month_hour_heatmap,
+    monthly_trend_by_state,
     monthly_trend,
+    seasonal_bar_by_state,
     seasonal_bar,
     state_choropleth,
     top_counties_bar,
+    weekday_weekend_by_state as weekday_weekend_by_state_fig,
     weekday_weekend_gap,
     weekday_weekend_lines,
+    yearly_boxplot_by_state as yearly_boxplot_by_state_fig,
     yearly_boxplot,
+    yearly_energy_trend_by_state as yearly_energy_trend_by_state_fig,
     yearly_energy_trend,
+    yearly_peak_by_state as yearly_peak_by_state_fig,
     yearly_peak_line,
+    yearly_volatility_by_state as yearly_volatility_by_state_fig,
     yearly_volatility,
 )
 
@@ -184,11 +198,11 @@ with st.sidebar:
         default=all_years,
         help="Filter the years used in the time-series sections.",
     )
-    daily_view_mode = st.radio(
-        "Daily cycle view",
-        options=["Aggregate", "Per state"],
+    view_scope = st.radio(
+        "Demand view",
+        options=["Aggregate", "Split by State"],
         index=0,
-        help="Show the hourly load curve as a national/region total or one line per state.",
+        help="Show combined demand or split the charts by state.",
     )
     st.caption("All time-series charts use UTC because the raw county data is UTC-indexed.")
 
@@ -222,38 +236,62 @@ with st.container(border=True):
         "Yearly trend",
         "Annual energy plus yearly demand distributions. This shows how total demand changes year to year and how the hourly spread behaves.",
     )
-    yearly_energy = yearly_energy_twh(filtered)
-    yearly_box = yearly_boxplot_frame(filtered)
+    if view_scope == "Aggregate":
+        yearly_energy = yearly_energy_twh(filtered)
+        yearly_box = yearly_boxplot_frame(filtered)
 
-    left, right = st.columns(2)
-    with left:
-        chart_definition("Annual energy: total electricity demand summed across all hours in each year, shown in TWh.")
-        st.plotly_chart(
-            yearly_energy_trend(
-                yearly_energy,
-                title=f"Annual electricity demand for {label}",
-            ),
-            use_container_width=True,
-        )
-    with right:
-        chart_definition("Hourly demand distribution: the spread of hourly values within each year, useful for spotting wider peaks and variability.")
-        st.plotly_chart(
-            yearly_boxplot(
-                yearly_box,
-                title=f"Hourly demand distribution by year for {label}",
-            ),
-            use_container_width=True,
-        )
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Annual energy: total electricity demand summed across all hours in each year, shown in TWh.")
+            st.plotly_chart(
+                yearly_energy_trend(
+                    yearly_energy,
+                    title=f"Annual electricity demand for {label}",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Hourly demand distribution: the spread of hourly values within each year, useful for spotting wider peaks and variability.")
+            st.plotly_chart(
+                yearly_boxplot(
+                    yearly_box,
+                    title=f"Hourly demand distribution by year for {label}",
+                ),
+                use_container_width=True,
+            )
 
-    if len(yearly_energy) >= 2:
-        first_year = yearly_energy.iloc[0]
-        last_year = yearly_energy.iloc[-1]
-        delta_twh = last_year - first_year
-        year_peak = int(annual_peaks.idxmax())
-        year_metrics = st.columns(3)
-        year_metrics[0].metric("First year", f"{first_year:.0f} TWh")
-        year_metrics[1].metric("Latest year", f"{last_year:.0f} TWh", f"{delta_twh:+.0f} TWh")
-        year_metrics[2].metric("Largest annual peak", f"{annual_peaks.max():.1f} GW", f"{year_peak}")
+        if len(yearly_energy) >= 2:
+            first_year = yearly_energy.iloc[0]
+            last_year = yearly_energy.iloc[-1]
+            delta_twh = last_year - first_year
+            year_peak = int(annual_peaks.idxmax())
+            year_metrics = st.columns(3)
+            year_metrics[0].metric("First year", f"{first_year:.0f} TWh")
+            year_metrics[1].metric("Latest year", f"{last_year:.0f} TWh", f"{delta_twh:+.0f} TWh")
+            year_metrics[2].metric("Largest annual peak", f"{annual_peaks.max():.1f} GW", f"{year_peak}")
+    else:
+        yearly_energy_state = yearly_energy_by_state(filtered)
+        yearly_box_state = yearly_boxplot_by_state(filtered)
+
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Annual energy: total electricity demand summed across all hours in each year, split by state.")
+            st.plotly_chart(
+                yearly_energy_trend_by_state_fig(
+                    yearly_energy_state,
+                    title=f"Annual electricity demand by state",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Hourly demand distribution: the spread of hourly values by state, useful for spotting wider peaks and variability.")
+            st.plotly_chart(
+                yearly_boxplot_by_state_fig(
+                    yearly_box_state,
+                    title="Hourly demand distribution by state",
+                ),
+                use_container_width=True,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +304,7 @@ with st.container(border=True):
         "The hour-of-day curve shows the typical daily load pattern and highlights when demand is highest and lowest.",
     )
 
-    if daily_view_mode == "Aggregate":
+    if view_scope == "Aggregate":
         hour_series = hour_of_day_average(filtered, aggregator="sum")
         cycle_fig = hour_of_day_total(
             hour_series,
@@ -304,34 +342,45 @@ with st.container(border=True):
         "Weekday vs weekend",
         "This shows how work schedules shift demand across the day by comparing weekday and weekend patterns.",
     )
-    ww_frame = weekday_weekend_hourly(filtered)
-    weekday_pivot = ww_frame.pivot(index="hour_utc", columns="day_type", values="demand_gw").reindex(columns=["Weekday", "Weekend"])
-    gap_series = weekday_pivot["Weekday"] - weekday_pivot["Weekend"]
+    if view_scope == "Aggregate":
+        ww_frame = weekday_weekend_hourly(filtered)
+        weekday_pivot = ww_frame.pivot(index="hour_utc", columns="day_type", values="demand_gw").reindex(columns=["Weekday", "Weekend"])
+        gap_series = weekday_pivot["Weekday"] - weekday_pivot["Weekend"]
 
-    left, right = st.columns(2)
-    with left:
-        chart_definition("Weekday vs weekend lines: the average hourly demand curve for each day type.")
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Weekday vs weekend lines: the average hourly demand curve for each day type.")
+            st.plotly_chart(
+                weekday_weekend_lines(
+                    ww_frame,
+                    title="Average hourly demand: weekday vs weekend",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Weekday gap: the difference between weekday and weekend demand at each hour, in GW.")
+            st.plotly_chart(
+                weekday_weekend_gap(
+                    ww_frame,
+                    title="Weekday minus weekend demand by hour",
+                ),
+                use_container_width=True,
+            )
+
+        ww_metrics = st.columns(3)
+        ww_metrics[0].metric("Weekday peak", f"{weekday_pivot['Weekday'].max():.1f} GW")
+        ww_metrics[1].metric("Weekend peak", f"{weekday_pivot['Weekend'].max():.1f} GW")
+        ww_metrics[2].metric("Largest gap hour", f"{int(gap_series.idxmax()):02d}:00", f"{gap_series.max():.1f} GW")
+    else:
+        ww_state = weekday_weekend_by_state(filtered)
+        chart_definition("Weekday and weekend demand are shown separately for each selected state.")
         st.plotly_chart(
-            weekday_weekend_lines(
-                ww_frame,
-                title="Average hourly demand: weekday vs weekend",
+            weekday_weekend_by_state_fig(
+                ww_state,
+                title="Weekday vs weekend demand by state",
             ),
             use_container_width=True,
         )
-    with right:
-        chart_definition("Weekday gap: the difference between weekday and weekend demand at each hour, in GW.")
-        st.plotly_chart(
-            weekday_weekend_gap(
-                ww_frame,
-                title="Weekday minus weekend demand by hour",
-            ),
-            use_container_width=True,
-        )
-
-    ww_metrics = st.columns(3)
-    ww_metrics[0].metric("Weekday peak", f"{weekday_pivot['Weekday'].max():.1f} GW")
-    ww_metrics[1].metric("Weekend peak", f"{weekday_pivot['Weekend'].max():.1f} GW")
-    ww_metrics[2].metric("Largest gap hour", f"{int(gap_series.idxmax()):02d}:00", f"{gap_series.max():.1f} GW")
 
 
 # ---------------------------------------------------------------------------
@@ -343,33 +392,56 @@ with st.container(border=True):
         "Monthly / seasonal",
         "Demand climbs into the summer and relaxes in spring/fall, which is easier to see when grouped by month and season.",
     )
-    monthly = monthly_average_gw(filtered)
-    seasonal = seasonal_average_gw(filtered)
+    if view_scope == "Aggregate":
+        monthly = monthly_average_gw(filtered)
+        seasonal = seasonal_average_gw(filtered)
 
-    left, right = st.columns(2)
-    with left:
-        chart_definition("Monthly trend: average demand for each calendar month, showing the overall seasonal cycle.")
-        st.plotly_chart(
-            monthly_trend(
-                monthly,
-                title="Average demand by month",
-            ),
-            use_container_width=True,
-        )
-    with right:
-        chart_definition("Seasonal bar: average demand grouped into winter, spring, summer, and autumn.")
-        st.plotly_chart(
-            seasonal_bar(
-                seasonal,
-                title="Average demand by season",
-            ),
-            use_container_width=True,
-        )
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Monthly trend: average demand for each calendar month, showing the overall seasonal cycle.")
+            st.plotly_chart(
+                monthly_trend(
+                    monthly,
+                    title="Average demand by month",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Seasonal bar: average demand grouped into winter, spring, summer, and autumn.")
+            st.plotly_chart(
+                seasonal_bar(
+                    seasonal,
+                    title="Average demand by season",
+                ),
+                use_container_width=True,
+            )
 
-    month_names = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
-    month_metrics = st.columns(2)
-    month_metrics[0].metric("Highest month", month_names[int(monthly.idxmax())] if len(monthly) else "N/A")
-    month_metrics[1].metric("Highest season", seasonal.idxmax() if len(seasonal) else "N/A")
+        month_names = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+        month_metrics = st.columns(2)
+        month_metrics[0].metric("Highest month", month_names[int(monthly.idxmax())] if len(monthly) else "N/A")
+        month_metrics[1].metric("Highest season", seasonal.idxmax() if len(seasonal) else "N/A")
+    else:
+        monthly_state = monthly_average_by_state(filtered)
+        seasonal_state = seasonal_average_by_state(filtered)
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Monthly trend: average demand by calendar month, split by state.")
+            st.plotly_chart(
+                monthly_trend_by_state(
+                    monthly_state,
+                    title="Average demand by month and state",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Seasonal bar: average demand by season, grouped by state.")
+            st.plotly_chart(
+                seasonal_bar_by_state(
+                    seasonal_state,
+                    title="Average demand by season and state",
+                ),
+                use_container_width=True,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -381,25 +453,48 @@ with st.container(border=True):
         "Month-hour heatmap and boxplot",
         "This is the densest view: where evening peaks line up with summer months and where the spread widens.",
     )
-    heatmap = month_hour_heatmap(filtered)
-    month_box = monthly_boxplot_frame(filtered)
+    if view_scope == "Aggregate":
+        heatmap = month_hour_heatmap(filtered)
+        month_box = monthly_boxplot_frame(filtered)
 
-    left, right = st.columns(2)
-    with left:
-        chart_definition("Heatmap: average demand for each month-hour combination, useful for spotting daily peaks by season.")
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Heatmap: average demand for each month-hour combination, useful for spotting daily peaks by season.")
+            st.plotly_chart(
+                viz_month_hour_heatmap(
+                    heatmap,
+                    title="Average demand heatmap by month and hour",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Monthly boxplot: the distribution of hourly demand within each month.")
+            st.plotly_chart(
+                month_boxplot(
+                    month_box,
+                    title="Hourly demand distribution by month",
+                ),
+                use_container_width=True,
+            )
+    else:
+        state_list = states_for_query[:4]
+        chart_definition("Heatmaps: one month-hour heatmap per selected state, so the seasonal pattern is split out instead of averaged.")
+        cols = st.columns(min(2, len(state_list)) or 1)
+        for idx, state in enumerate(state_list):
+            with cols[idx % len(cols)]:
+                st.caption(state)
+                st.plotly_chart(
+                    viz_month_hour_heatmap(
+                        month_hour_heatmap(filtered[[state]]),
+                        title=f"Month-hour demand for {state}",
+                    ),
+                    use_container_width=True,
+                )
+        chart_definition("Boxplot: hourly demand distribution split by state.")
         st.plotly_chart(
-            viz_month_hour_heatmap(
-                heatmap,
-                title="Average demand heatmap by month and hour",
-            ),
-            use_container_width=True,
-        )
-    with right:
-        chart_definition("Monthly boxplot: the distribution of hourly demand within each month.")
-        st.plotly_chart(
-            month_boxplot(
-                month_box,
-                title="Hourly demand distribution by month",
+            yearly_boxplot_by_state_fig(
+                yearly_boxplot_by_state(filtered),
+                title="Hourly demand distribution by state",
             ),
             use_container_width=True,
         )
@@ -419,25 +514,48 @@ with st.container(border=True):
     extreme_hours, threshold_gw = extreme_hours_frame(filtered, quantile=0.99)
     summer_share = 100 * extreme_hours["month"].isin([6, 7, 8]).mean() if not extreme_hours.empty else 0.0
 
-    left, right = st.columns(2)
-    with left:
-        chart_definition("Volatility: yearly standard deviation of hourly demand, a simple measure of how uneven each year is.")
-        st.plotly_chart(
-            yearly_volatility(
-                volatility,
-                title="Yearly demand volatility",
-            ),
-            use_container_width=True,
-        )
-    with right:
-        chart_definition("Annual peaks: the highest hourly demand reached in each year.")
-        st.plotly_chart(
-            yearly_peak_line(
-                annual_peaks,
-                title="Annual peak hourly demand",
-            ),
-            use_container_width=True,
-        )
+    if view_scope == "Aggregate":
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Volatility: yearly standard deviation of hourly demand, a simple measure of how uneven each year is.")
+            st.plotly_chart(
+                yearly_volatility(
+                    volatility,
+                    title="Yearly demand volatility",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Annual peaks: the highest hourly demand reached in each year.")
+            st.plotly_chart(
+                yearly_peak_line(
+                    annual_peaks,
+                    title="Annual peak hourly demand",
+                ),
+                use_container_width=True,
+            )
+    else:
+        volatility_state = annual_volatility_by_state(filtered)
+        peaks_state = annual_peak_by_state(filtered)
+        left, right = st.columns(2)
+        with left:
+            chart_definition("Volatility: yearly standard deviation of hourly demand, split by state.")
+            st.plotly_chart(
+                yearly_volatility_by_state_fig(
+                    volatility_state,
+                    title="Yearly demand volatility by state",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            chart_definition("Annual peaks: the highest hourly demand reached in each year, split by state.")
+            st.plotly_chart(
+                yearly_peak_by_state_fig(
+                    peaks_state,
+                    title="Annual peak hourly demand by state",
+                ),
+                use_container_width=True,
+            )
 
     vol_metrics = st.columns(3)
     vol_metrics[0].metric("99th percentile threshold", f"{threshold_gw:.1f} GW")
@@ -452,7 +570,7 @@ with st.container(border=True):
     section_header(
         7,
         "County, state, and per-capita geography",
-        "This section uses the full U.S. aggregates so the county and state maps stay comparable, independent of the time filters above.",
+        "This section follows the selected states so the county and state views stay aligned with the filters above.",
     )
 
     try:
@@ -467,9 +585,17 @@ with st.container(border=True):
         state_summary["avg_demand_gw"] = state_summary["avg_demand_mw"] / 1000.0
         state_summary["demand_per_100k_gw"] = state_summary["demand_per_capita_mw"] * 100.0
 
-        county_top = county_summary.sort_values("avg_demand_mw", ascending=False).head(10)
+        selected_state_set = set(states_for_query)
+        county_geo = county_summary[county_summary["state"].isin(selected_state_set)].copy()
+        state_geo = state_summary[state_summary["state"].isin(selected_state_set)].copy()
+        if county_geo.empty:
+            county_geo = county_summary
+        if state_geo.empty:
+            state_geo = state_summary
+
+        county_top = county_geo.sort_values("avg_demand_mw", ascending=False).head(10)
         county_hist = px.histogram(
-            county_summary,
+            county_geo,
             x="avg_demand_gw",
             nbins=50,
             color_discrete_sequence=["#0f766e"],
@@ -495,7 +621,7 @@ with st.container(border=True):
         chart_definition("County map: average electricity demand by county across the U.S.")
         st.plotly_chart(
             county_choropleth(
-                county_summary,
+                county_geo,
                 geojson=counties_geojson,
                 title="Average electricity demand by county",
                 color_col="avg_demand_gw",
@@ -509,7 +635,7 @@ with st.container(border=True):
             chart_definition("State map: average electricity demand by state.")
             st.plotly_chart(
                 state_choropleth(
-                    state_summary,
+                    state_geo,
                     color_col="avg_demand_gw",
                     title="Average electricity demand by state",
                     color_bar_title="GW",
@@ -520,7 +646,7 @@ with st.container(border=True):
             chart_definition("Per-capita state map: average demand normalized by population.")
             st.plotly_chart(
                 state_choropleth(
-                    state_summary,
+                    state_geo,
                     color_col="demand_per_100k_gw",
                     title="Demand per 100k residents by state",
                     color_bar_title="GW / 100k people",
@@ -528,7 +654,7 @@ with st.container(border=True):
                 use_container_width=True,
             )
 
-        state_rank = state_summary.sort_values("demand_per_100k_gw", ascending=False)[["state", "demand_per_100k_gw", "avg_demand_gw"]].head(10)
+        state_rank = state_geo.sort_values("demand_per_100k_gw", ascending=False)[["state", "demand_per_100k_gw", "avg_demand_gw"]].head(10)
         st.dataframe(
             state_rank.rename(
                 columns={

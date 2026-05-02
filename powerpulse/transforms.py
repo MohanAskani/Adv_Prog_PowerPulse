@@ -86,6 +86,21 @@ def yearly_energy_twh(df: pd.DataFrame) -> pd.Series:
     return out
 
 
+def yearly_energy_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Annual electricity demand in TWh, split by state."""
+    out = df.groupby(df.index.year).sum() / 1e6
+    out.index.name = "year"
+    out = out.reset_index().melt(id_vars="year", var_name="state", value_name="energy_twh")
+    return out
+
+
+def yearly_boxplot_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Long-form hourly demand frame in GW, split by state."""
+    frame = (df / 1e3).melt(ignore_index=False, var_name="state", value_name="demand_gw").reset_index(names="timestamp")
+    frame["year"] = frame["timestamp"].dt.year.astype(int)
+    return frame
+
+
 def yearly_boxplot_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Long-form frame for yearly demand distributions in GW."""
     series = aggregate_total_series(df) / 1e3
@@ -108,12 +123,29 @@ def weekday_weekend_hourly(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def weekday_weekend_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Average demand by hour for weekday vs weekend, split by state."""
+    frame = (df / 1e3).melt(ignore_index=False, var_name="state", value_name="demand_gw").reset_index(names="timestamp")
+    frame["hour_utc"] = frame["timestamp"].dt.hour.astype(int)
+    frame["day_type"] = np.where(frame["timestamp"].dt.dayofweek < 5, "Weekday", "Weekend")
+    out = frame.groupby(["state", "day_type", "hour_utc"], as_index=False)["demand_gw"].mean()
+    return out
+
+
 def monthly_average_gw(df: pd.DataFrame) -> pd.Series:
     """Average aggregate demand by calendar month in GW."""
     series = aggregate_total_series(df) / 1e3
     out = series.groupby(series.index.month).mean()
     out.index.name = "month"
     out.name = "avg_demand_gw"
+    return out
+
+
+def monthly_average_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Average demand by calendar month in GW, split by state."""
+    out = (df / 1e3).groupby(df.index.month).mean()
+    out.index.name = "month"
+    out = out.reset_index().melt(id_vars="month", var_name="state", value_name="avg_demand_gw")
     return out
 
 
@@ -137,6 +169,24 @@ def seasonal_average_gw(df: pd.DataFrame) -> pd.Series:
     out = frame.groupby("season")["demand_gw"].mean()
     out = out.reindex(["Winter", "Spring", "Summer", "Fall"])
     out.name = "avg_demand_gw"
+    return out
+
+
+def seasonal_average_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Average demand by season in GW, split by state."""
+    def season_for_month(month: int) -> str:
+        if month in (12, 1, 2):
+            return "Winter"
+        if month in (3, 4, 5):
+            return "Spring"
+        if month in (6, 7, 8):
+            return "Summer"
+        return "Fall"
+
+    frame = (df / 1e3).melt(ignore_index=False, var_name="state", value_name="demand_gw").reset_index(names="timestamp")
+    frame["season"] = [season_for_month(month) for month in frame["timestamp"].dt.month]
+    out = frame.groupby(["season", "state"], as_index=False)["demand_gw"].mean()
+    out["season"] = pd.Categorical(out["season"], categories=["Winter", "Spring", "Summer", "Fall"], ordered=True)
     return out
 
 
@@ -192,12 +242,28 @@ def annual_volatility_gw(df: pd.DataFrame) -> pd.Series:
     return out
 
 
+def annual_volatility_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Standard deviation of hourly demand by year, split by state."""
+    out = (df / 1e3).groupby(df.index.year).std()
+    out.index.name = "year"
+    out = out.reset_index().melt(id_vars="year", var_name="state", value_name="volatility_gw")
+    return out
+
+
 def annual_peak_gw(df: pd.DataFrame) -> pd.Series:
     """Annual peak hourly aggregate demand, in GW."""
     series = aggregate_total_series(df) / 1e3
     out = series.groupby(series.index.year).max()
     out.index.name = "year"
     out.name = "peak_gw"
+    return out
+
+
+def annual_peak_by_state(df: pd.DataFrame) -> pd.DataFrame:
+    """Annual peak hourly demand in GW, split by state."""
+    out = (df / 1e3).groupby(df.index.year).max()
+    out.index.name = "year"
+    out = out.reset_index().melt(id_vars="year", var_name="state", value_name="peak_gw")
     return out
 
 

@@ -95,6 +95,19 @@ def yearly_energy_trend(series_twh: pd.Series, title: str) -> go.Figure:
     return _apply_common_layout(fig, title, "Annual energy (TWh)", "Year", height=360)
 
 
+def yearly_energy_trend_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.line(
+        frame,
+        x="year",
+        y="energy_twh",
+        color="state",
+        markers=True,
+        title=title,
+    )
+    fig.update_xaxes(tickmode="linear", dtick=1)
+    return _apply_common_layout(fig, title, "Annual energy (TWh)", "Year", height=380)
+
+
 def yearly_boxplot(frame: pd.DataFrame, title: str) -> go.Figure:
     fig = px.box(
         frame,
@@ -105,6 +118,12 @@ def yearly_boxplot(frame: pd.DataFrame, title: str) -> go.Figure:
     fig.update_traces(marker=dict(size=4, color="#0f766e"), line=dict(width=1.5, color="#0f766e"))
     fig.update_xaxes(type="category")
     return _apply_common_layout(fig, title, "Hourly demand (GW)", "Year", height=360)
+
+
+def yearly_boxplot_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.box(frame, x="state", y="demand_gw", points="outliers")
+    fig.update_traces(marker=dict(size=4, color="#0f766e"), line=dict(width=1.5, color="#0f766e"))
+    return _apply_common_layout(fig, title, "Hourly demand (GW)", "State", height=380)
 
 
 def weekday_weekend_lines(frame: pd.DataFrame, title: str) -> go.Figure:
@@ -143,6 +162,21 @@ def weekday_weekend_gap(frame: pd.DataFrame, title: str) -> go.Figure:
     return _apply_common_layout(fig, title, "Demand gap (GW)", "Hour of day (UTC)", height=360)
 
 
+def weekday_weekend_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.line(
+        frame,
+        x="hour_utc",
+        y="demand_gw",
+        color="state",
+        line_dash="day_type",
+        markers=True,
+        title=title,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    fig.update_xaxes(tickmode="linear", tick0=0, dtick=2)
+    return _apply_common_layout(fig, title, "Average demand (GW)", "Hour of day (UTC)", height=380)
+
+
 def monthly_trend(series: pd.Series, title: str) -> go.Figure:
     month_labels = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
     x = [month_labels[m] for m in series.index]
@@ -160,6 +194,22 @@ def monthly_trend(series: pd.Series, title: str) -> go.Figure:
     return _apply_common_layout(fig, title, "Average demand (GW)", "Month", height=360)
 
 
+def monthly_trend_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    month_labels = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+    frame = frame.copy()
+    frame["month_name"] = frame["month"].map(month_labels)
+    fig = px.line(
+        frame,
+        x="month_name",
+        y="avg_demand_gw",
+        color="state",
+        markers=True,
+        title=title,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    return _apply_common_layout(fig, title, "Average demand (GW)", "Month", height=380)
+
+
 def seasonal_bar(series: pd.Series, title: str) -> go.Figure:
     fig = go.Figure(
         go.Bar(
@@ -171,6 +221,19 @@ def seasonal_bar(series: pd.Series, title: str) -> go.Figure:
         )
     )
     return _apply_common_layout(fig, title, "Average demand (GW)", "Season", height=360)
+
+
+def seasonal_bar_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.bar(
+        frame,
+        x="season",
+        y="demand_gw",
+        color="state",
+        barmode="group",
+        title=title,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    return _apply_common_layout(fig, title, "Average demand (GW)", "Season", height=380)
 
 
 def month_hour_heatmap(pivot: pd.DataFrame, title: str) -> go.Figure:
@@ -213,6 +276,20 @@ def yearly_volatility(series: pd.Series, title: str) -> go.Figure:
     return _apply_common_layout(fig, title, "Std dev (GW)", "Year", height=360)
 
 
+def yearly_volatility_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.line(
+        frame,
+        x="year",
+        y="volatility_gw",
+        color="state",
+        markers=True,
+        title=title,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    fig.update_xaxes(tickmode="linear", dtick=1)
+    return _apply_common_layout(fig, title, "Std dev (GW)", "Year", height=380)
+
+
 def yearly_peak_line(series: pd.Series, title: str) -> go.Figure:
     fig = go.Figure(
         go.Scatter(
@@ -227,6 +304,20 @@ def yearly_peak_line(series: pd.Series, title: str) -> go.Figure:
     )
     fig.update_xaxes(tickmode="linear", dtick=1)
     return _apply_common_layout(fig, title, "Peak demand (GW)", "Year", height=360)
+
+
+def yearly_peak_by_state(frame: pd.DataFrame, title: str) -> go.Figure:
+    fig = px.line(
+        frame,
+        x="year",
+        y="peak_gw",
+        color="state",
+        markers=True,
+        title=title,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+    )
+    fig.update_xaxes(tickmode="linear", dtick=1)
+    return _apply_common_layout(fig, title, "Peak demand (GW)", "Year", height=380)
 
 
 def top_counties_bar(frame: pd.DataFrame, title: str) -> go.Figure:
