@@ -465,7 +465,7 @@ with st.container(border=True):
                 labels={"renewable_to_demand": "Renewable / Demand", "avg_ramp_gw": "Avg hourly ramp (GW)"},
                 title=f"{selected_ramp_state}: monthly avg ramp vs renewable/demand",
             )
-            st.plotly_chart(common_layout(fig_scatter, fig_scatter.layout.title.text, "Avg ramp (GW)", "Renewable / Demand", 420), use_container_width=True)
+            #st.plotly_chart(common_layout(fig_scatter, fig_scatter.layout.title.text, "Avg ramp (GW)", "Renewable / Demand", 420), use_container_width=True)
 
     # --- Section 6: What-If simulator ---
 with st.container(border=True):

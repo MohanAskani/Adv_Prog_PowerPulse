@@ -25,8 +25,11 @@ st.set_page_config(
 
 # Declare pages. Each path is relative to this file.
 pages = {
+    "About": [
+        st.Page("pages/7_value_proposition.py", title="Why PowerPulse", default=True),
+    ],
     "Explore": [
-        st.Page("pages/1_overview.py", title="Overview", default=True),
+        st.Page("pages/1_overview.py", title="Overview"),
         st.Page("pages/2_demand_explorer.py", title="Demand Explorer"),
     ],
     "Analyze": [
