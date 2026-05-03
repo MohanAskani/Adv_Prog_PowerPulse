@@ -9,6 +9,7 @@ from __future__ import annotations
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import pandas as pd
 
 from powerpulse.data import get_generation_monthly, get_state_hourly, list_states, date_range
 from powerpulse.stress import (
@@ -19,6 +20,7 @@ from powerpulse.stress import (
     stress_component_frame,
 )
 from powerpulse.transforms import filter_states_years
+from powerpulse.viz import month_hour_heatmap
 
 
 st.markdown(
@@ -336,3 +338,258 @@ with st.container(border=True):
             )
         )
         st.plotly_chart(common_layout(fig, f"{selected_detail}: monthly ramp severity", "Hourly change (GW)", "Month"), use_container_width=True)
+
+    # --- Section 5: Ramp Pressure Explorer (interactive deep-dive) ---
+with st.container(border=True):
+    section_header(
+        5,
+        "Ramp Events Explorer",
+        "Inspect large hourly ramps and seasonal patterns; optionally overlay local weather for context.",
+    )
+
+    selected_ramp_state = st.selectbox(
+        "State for ramp explorer",
+        options=scored["state"].tolist(),
+        index=0,
+        key="ramp_detail_state",
+    )
+
+    # Hourly series for the selected state (MW)
+    state_series_r = filtered[selected_ramp_state]
+    if state_series_r.empty:
+        st.warning("No hourly data for the selected state and filters.")
+    else:
+        # Ramp series in GW
+        ramp_gw = state_series_r.diff().abs() / 1000.0
+
+        # Month×hour heatmap of average ramp magnitude
+        pivot = (
+            ramp_gw.rename("ramp_gw").to_frame()
+            .assign(month=lambda df: df.index.month, hour=lambda df: df.index.hour)
+            .groupby(["month", "hour"])["ramp_gw"]
+            .mean()
+            .unstack(fill_value=0)
+        )
+        pivot = pivot.reindex(index=range(1, 13), columns=range(24), fill_value=0)
+
+        st.markdown("**Monthly × Hour ramp intensity**")
+        st.plotly_chart(month_hour_heatmap(pivot, f"{selected_ramp_state}: average hourly ramp (GW) by month"), use_container_width=True)
+
+        # Top-N ramp events
+        st.markdown("**Top ramp events**")
+        cols = st.columns([1, 1, 1])
+        with cols[0]:
+            top_n = st.number_input("Top N events", min_value=3, max_value=50, value=8, step=1, key="ramp_top_n")
+        with cols[1]:
+            event_window = st.slider("Detail window (hours each side)", 6, 72, 24, key="ramp_window")
+        with cols[2]:
+            min_ramp = st.slider("Min ramp threshold (GW)", 0.0, float(ramp_gw.max() if not ramp_gw.empty else 10.0), 0.0, 0.1, key="ramp_min")
+
+        events = ramp_gw.dropna()
+        if min_ramp > 0:
+            events = events[events >= min_ramp]
+        if events.empty:
+            st.info("No ramp events match the current threshold/time filters.")
+        else:
+            top_events = events.nlargest(top_n).reset_index()
+            top_events.columns = ["timestamp", "ramp_gw"]
+
+            fig_events = px.bar(
+                top_events,
+                x="timestamp",
+                y="ramp_gw",
+                color="ramp_gw",
+                color_continuous_scale="Turbo",
+                title=f"Top {len(top_events)} hourly absolute ramps for {selected_ramp_state}",
+            )
+            fig_events.update_traces(hovertemplate="%{x}<br>Ramp %{y:.2f} GW<extra></extra>")
+            st.plotly_chart(common_layout(fig_events, fig_events.layout.title.text, "Ramp (GW)", "Timestamp", 360), use_container_width=True)
+
+            # Select an event to inspect
+            options = [f"{r['timestamp']} — {r['ramp_gw']:.2f} GW" for _, r in top_events.iterrows()]
+            choice = st.selectbox("Inspect event", options=options, key="ramp_choice")
+            chosen_idx = options.index(choice)
+            ts = top_events.loc[chosen_idx, "timestamp"]
+
+            # Show detailed +/- window around the event
+            start = ts - pd.Timedelta(hours=event_window)
+            end = ts + pd.Timedelta(hours=event_window)
+            detail = state_series_r.loc[start:end] / 1000.0
+
+            fig_detail = go.Figure()
+            fig_detail.add_trace(go.Scatter(x=detail.index, y=detail.values, mode="lines+markers", name="Demand (GW)", line=dict(color="#111827", width=3)))
+            # Overlay ramp as bar
+            detail_ramp = detail.diff().abs()
+            fig_detail.add_trace(go.Bar(x=detail_ramp.index, y=detail_ramp.values, name="Ramp (GW)", marker_color="#f97316", opacity=0.6, yaxis="y2"))
+            fig_detail.update_layout(
+                yaxis=dict(title="Demand (GW)"),
+                yaxis2=dict(title="Ramp (GW)", overlaying="y", side="right", showgrid=False),
+                hovermode="x unified",
+            )
+            st.plotly_chart(common_layout(fig_detail, f"Event detail: {ts} ({selected_ramp_state})", "Demand (GW)", "Timestamp", 420), use_container_width=True)
+
+            # Optional weather upload to overlay temperature
+            st.markdown("**Optional: upload weather CSV (timestamp, temperature)**")
+            uploaded = st.file_uploader("Weather CSV for overlay (optional)", type=["csv"], key="ramp_weather_upload")
+            if uploaded is not None:
+                try:
+                    import pandas as _pd
+
+                    weather = _pd.read_csv(uploaded, parse_dates=[0], header=0)
+                    weather.columns = ["timestamp", "temperature"] + list(weather.columns[2:])
+                    weather = weather.set_index("timestamp").sort_index()
+                    wdetail = weather["temperature"].loc[start:end]
+                    if not wdetail.empty:
+                        fig_detail.add_trace(go.Scatter(x=wdetail.index, y=wdetail.values, mode="lines", name="Temp (°C)", line=dict(color="#2563eb", dash="dot"), yaxis="y3"))
+                        fig_detail.update_layout(yaxis3=dict(title="Temperature (°C)", anchor="free", overlaying="y", side="left", position=0.05))
+                        st.plotly_chart(common_layout(fig_detail, f"Event detail + weather: {ts} ({selected_ramp_state})", "Demand (GW)", "Timestamp", 460), use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Could not parse weather file: {e}")
+
+        # Scatter: monthly average ramp vs renewable share (if monthly generation exists)
+        if generation_monthly is None:
+            st.info("Monthly generation data not available — upload `generation_monthly.parquet` to see ramp vs renewable scatter.")
+        else:
+            # monthly variable created earlier in Section 3; recompute per-state monthly if needed
+            state_monthly = monthly[monthly["state"] == selected_ramp_state].copy()
+            # compute avg ramp per month
+            ramp_month = ramp_gw.to_frame(name="ramp_gw").assign(month=lambda df: df.index.month)
+            ramp_month = ramp_month.groupby("month").mean().reindex(range(1, 13))
+            scatter_df = state_monthly.merge(ramp_month.reset_index(), left_on=state_monthly["date"].dt.month, right_on="month", how="inner")
+            scatter_df = scatter_df.rename(columns={"ramp_gw": "avg_ramp_gw"})
+            fig_scatter = px.scatter(
+                scatter_df,
+                x="renewable_to_demand",
+                y="avg_ramp_gw",
+                color="date",
+                labels={"renewable_to_demand": "Renewable / Demand", "avg_ramp_gw": "Avg hourly ramp (GW)"},
+                title=f"{selected_ramp_state}: monthly avg ramp vs renewable/demand",
+            )
+            st.plotly_chart(common_layout(fig_scatter, fig_scatter.layout.title.text, "Avg ramp (GW)", "Renewable / Demand", 420), use_container_width=True)
+
+    # --- Section 6: What-If simulator ---
+with st.container(border=True):
+    section_header(
+        6,
+        "Grid-stress simulator",
+        "Simulate simple mitigations (battery discharge and DR) and see peak reduction and prevented stress hours.",
+    )
+
+    # Short, plain-language intro for users unfamiliar with batteries/grids
+    st.markdown(
+        """
+        **About this simulator**
+
+        - Try two simple actions: automatic demand cuts (DR) and battery discharge.
+        - DR reduces the highest-demand hours; batteries discharge into the top hours until daily energy is used up.
+        - For clear results, use the stress percentile around 90–95 (this counts the high-demand hours we aim to reduce).
+        - You will see original vs. new peak, peak reduction, prevented stress hours, and a daily dispatch timeline.
+
+        This is a quick scenario tool, not a full power-system model.
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Controls (local to section)
+    sc1, sc2 = st.columns([1, 2])
+    with sc1:
+        w_state = st.selectbox("State for simulation", options=scored["state"].tolist(), index=0, key="whatif_state")
+        w_years = st.multiselect("Years", options=all_years, default=[all_years[-1]], key="whatif_years")
+        storage_power = st.number_input("Storage power (MW)", min_value=0.0, max_value=20000.0, value=1000.0, step=50.0, key="whatif_storage_power")
+        storage_hours = st.number_input("Storage duration (hours)", min_value=0.0, max_value=48.0, value=4.0, step=1.0, key="whatif_storage_hours")
+        dr_power = st.number_input("DR max (MW)", min_value=0.0, max_value=20000.0, value=500.0, step=50.0, key="whatif_dr_power")
+        dr_hours = st.number_input("DR hours/day", min_value=0, max_value=24, value=3, step=1, key="whatif_dr_hours")
+        pct = st.slider("Stress percentile (0-100%)", 0, 100, 95, key="whatif_stress_pct")
+        st.caption("Percentile of historical hourly demand: 0% = lowest observed hour, 100% = highest observed hour (peak). Typical values: 90–95%.")
+        # Critical threshold indicator
+        critical_pct = 80
+        st.markdown(f"**Critical level:** {critical_pct}% — hours at or above this are high stress.")
+        if pct >= critical_pct:
+            st.warning(f"Selected stress = {pct}% (≥ {critical_pct}%). This focuses the simulation on very high-demand hours.")
+        else:
+            st.info(f"Selected stress = {pct}% (< {critical_pct}%) — includes less extreme high-demand hours.")
+
+    with sc2:
+        # Run simulation
+        if st.button("Run simulation", key="run_whatif"):
+            sim_filtered = filter_states_years(demand_hourly, states=[w_state], years=w_years)
+            if sim_filtered.empty:
+                st.warning("No data for selection.")
+            else:
+                series_sim = sim_filtered[w_state]
+
+                def simulate_counterfactual_local(series_mw: pd.Series, storage_power_mw: float, storage_hours: float, dr_power_mw: float, dr_hours_per_day: int):
+                    df = series_mw.copy().to_frame(name="demand_mw")
+                    df["date"] = df.index.normalize()
+                    dispatch_records = []
+                    energy_capacity_mwh = storage_power_mw * storage_hours
+                    out = df["demand_mw"].copy()
+                    for date, group in df.groupby("date"):
+                        demands = group["demand_mw"].copy()
+                        if dr_power_mw > 0 and dr_hours_per_day > 0:
+                            top_hours = demands.nlargest(dr_hours_per_day).index
+                            for h in top_hours:
+                                red = min(dr_power_mw, out.loc[h])
+                                out.loc[h] = out.loc[h] - red
+                                dispatch_records.append({"timestamp": h, "type": "dr", "mw": red})
+                        energy_left_mwh = energy_capacity_mwh
+                        for h in demands.sort_values(ascending=False).index:
+                            if energy_left_mwh <= 0 or storage_power_mw <= 0:
+                                break
+                            avail = min(storage_power_mw, out.loc[h])
+                            use_mwh = min(avail, energy_left_mwh)
+                            use_mw = use_mwh
+                            out.loc[h] = out.loc[h] - use_mw
+                            energy_left_mwh -= use_mwh
+                            if use_mw > 0:
+                                dispatch_records.append({"timestamp": h, "type": "storage", "mw": use_mw})
+                    dispatch = pd.DataFrame(dispatch_records)
+                    if not dispatch.empty:
+                        dispatch = dispatch.set_index("timestamp").sort_index()
+                    else:
+                        dispatch = pd.DataFrame(columns=["type", "mw"]) 
+                    return out, dispatch
+
+                new_series_sim, dispatch_sim = simulate_counterfactual_local(series_sim, storage_power, storage_hours, dr_power, dr_hours)
+                orig_peak = series_sim.max() / 1000.0
+                new_peak = new_series_sim.max() / 1000.0
+                peak_red = orig_peak - new_peak
+                thresh = series_sim.quantile(pct / 100.0)
+                orig_hours = (series_sim >= thresh).sum()
+                new_hours = (new_series_sim >= thresh).sum()
+                prevented = orig_hours - new_hours
+
+                d1, d2, d3, d4 = st.columns(4)
+                d1.metric("Orig peak", f"{orig_peak:.2f} GW")
+                d2.metric("New peak", f"{new_peak:.2f} GW")
+                d3.metric("Peak reduction", f"{peak_red:.2f} GW")
+                d4.metric("Stress hours prevented", f"{int(prevented)}")
+
+                # Plot last 14 days by default
+                wnd = 14
+                end_idx = series_sim.index.max()
+                start_idx = end_idx - pd.Timedelta(days=wnd)
+                idx = series_sim.index >= start_idx
+                fig_sim = go.Figure()
+                fig_sim.add_trace(go.Scatter(x=series_sim[idx].index, y=series_sim[idx] / 1000.0, mode="lines", name="Original"))
+                fig_sim.add_trace(go.Scatter(x=new_series_sim[idx].index, y=new_series_sim[idx] / 1000.0, mode="lines", name="After"))
+                fig_sim.add_trace(go.Scatter(x=series_sim[idx].index, y=[thresh / 1000.0] * idx.sum(), mode="lines", name=f"{pct}th pct", line=dict(dash="dash")))
+                st.plotly_chart(common_layout(fig_sim, f"{w_state}: before/after (last {wnd} days)", "Demand (GW)", "Timestamp"), use_container_width=True)
+
+                if not dispatch_sim.empty:
+                    disp = dispatch_sim.copy()
+                    if "mw" in disp.columns:
+                        # Aggregate dispatch by day and type for a cleaner timeline
+                        daily = disp.groupby([disp.index.normalize(), "type"])["mw"].sum().unstack(fill_value=0)
+                        figd = go.Figure()
+                        if "dr" in daily.columns:
+                            figd.add_trace(go.Bar(x=daily.index, y=daily["dr"], name="DR (MW)", marker_color="#ef4444"))
+                        if "storage" in daily.columns:
+                            figd.add_trace(go.Bar(x=daily.index, y=daily["storage"], name="Storage (MW)", marker_color="#2563eb"))
+                        if figd.data:
+                            st.plotly_chart(common_layout(figd, "Mitigation dispatch timeline", "MW dispatched", "Date", 360), use_container_width=True)
+                        else:
+                            st.info("No dispatch recorded for the selected scenario.")
+                    else:
+                        st.info("No dispatch values found in simulation results.")
+
