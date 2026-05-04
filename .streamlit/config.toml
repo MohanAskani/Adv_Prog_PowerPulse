@@ -1,7 +1,6 @@
 [server]
-# Local dev: keep file watcher fast; don't open a browser tab automatically
-headless = false
-runOnSave = true
+headless = true
+runOnSave = false
 
 [browser]
 gatherUsageStats = false
