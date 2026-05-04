@@ -1,6 +1,6 @@
 # PowerPulse
 
-Streamlit web app for exploring U.S. electricity demand, grid stress, renewable mismatch, and short-term forecasting.
+Streamlit web app for explaining why electricity demand matters, exploring U.S. load patterns, scoring grid stress, measuring renewable mismatch, and forecasting short-term demand.
 
 Course: **Rutgers Advanced Programming, Spring 2026**
 Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
@@ -9,11 +9,11 @@ Team **Debuggers**: Mohan Askani, Pranshu Verma, Neel Barve
 
 | Module | Owner | Status |
 |---|---|---|
-| Overview | Mohan | stub |
-| Demand Explorer | Mohan | in progress |
-| Grid Stress | Neel | in progress |
-| Renewable Mismatch | Pranshu | stub |
-| Forecasting | Mohan | in progress |
+| Why PowerPulse | Team Debuggers | complete |
+| Demand Explorer | Mohan | complete |
+| Grid Stress | Neel | complete |
+| Renewable Mismatch | Pranshu | complete |
+| Forecasting | Mohan | complete |
 
 ## Architecture
 
@@ -28,11 +28,12 @@ powerpulse/
 ├── powerpulse/                  # importable package
 │   ├── data.py                  # cached parquet loaders
 │   ├── transforms.py            # rollups, peak detection, per-capita
-│   ├── stress.py                # grid stress score (Mohan)
-│   ├── mismatch.py              # renewable mismatch metrics (Neel)
+│   ├── stress.py                # grid stress score and demand-pressure metrics
+│   ├── mismatch.py              # renewable mismatch metrics
 │   └── viz.py                   # shared plotly chart helpers
 ├── scripts/
-│   └── build_aggregates.py      # one-time ETL: h5 → parquet
+│   ├── build_aggregates.py      # one-time ETL: h5 -> parquet
+│   └── build_generation_monthly.py
 ├── data/
 │   └── aggregates/              # baked parquets committed for easy setup
 │   └── external/                # small shared files needed in cloud deploys
@@ -43,7 +44,7 @@ powerpulse/
 ## Setup
 
 ```bash
-# from this directory (repo root)
+# from this directory: Adv_Prog_PowerPulse
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -52,7 +53,18 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app should open at `http://localhost:8501`. The committed files under `data/aggregates/`, `data/external/`, and the repo-root compatibility copies are enough for the Overview, Demand Explorer, and Forecasting pages to run after cloning or on Streamlit Community Cloud.
+The app should open at `http://localhost:8501`. The committed files under `data/aggregates/`, `data/external/`, and the repo-root compatibility copies are enough for all active pages to run after cloning or on Streamlit Community Cloud.
+
+## Streamlit Community Cloud
+
+Use these settings when deploying from GitHub:
+
+- Repository: `MohanAskani/Adv_Prog_PowerPulse`
+- Branch: `master` after the final merge, or `Mohan` while testing team updates
+- Main file path: `app.py`
+- Python dependencies: installed from `requirements.txt`
+
+No raw `.h5` file is needed for deployment because the app reads committed aggregate Parquet files.
 
 ## Rebuild Aggregates
 
@@ -81,8 +93,8 @@ source .venv/bin/activate
 
 ## Notes for the team
 
-- **Timestamps are UTC** in the source h5. The Demand Explorer currently uses UTC hour-of-day; converting to local time per state is on the backlog.
-- The midterm code dropped Autauga County (`p01001`) by mistake (`df.iloc[:, 1:]` on an index-only DataFrame). The ETL here uses **all 3,109 counties** so national totals will differ slightly from the midterm report.
+- **Timestamps are UTC** in the source h5. The Demand Explorer currently uses UTC hour-of-day; converting to local time per state is a future improvement.
+- Earlier notebook code dropped Autauga County (`p01001`) by mistake (`df.iloc[:, 1:]` on an index-only DataFrame). The ETL here uses **all 3,109 counties** so national totals may differ slightly from earlier reports.
 - All chart functions live in `powerpulse/viz.py` so the four pages share a consistent style.
 - The committed parquet files under `data/aggregates/` let teammates run the app immediately after cloning; regenerate them with `python scripts/build_aggregates.py` if the source data changes.
 - Forecasting uses `scikit-learn` gradient boosting with daily average load, calendar seasonality, lag features, and a 2023 backtest against simple baselines.
