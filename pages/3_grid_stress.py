@@ -174,8 +174,11 @@ with cards[3]:
 with st.expander("How the stress score is computed", expanded=False):
     st.write(
         "Each component is percentile-ranked across selected states, then combined with the sidebar weights. "
+
         "Peak intensity = 99th percentile load / average load. Volatility = daily peak variation. "
+
         "Seasonal extreme = summer peak / shoulder-season baseline. Ramp severity = large hourly changes. "
+
         "Near-peak persistence = share of hours above 90% of the state peak."
     )
 
@@ -183,7 +186,10 @@ with st.container(border=True):
     section_header(
         1,
         "State stress ranking",
-        "A transparent state ranking based only on demand behavior. Higher means the selected period shows more concentrated or variable load pressure.",
+        
+        "A transparent state ranking based only on demand behavior. " \
+        
+        "Higher means the selected period shows more concentrated or variable load pressure.",
     )
     left, right = st.columns([1.1, 1])
     with left:
@@ -239,70 +245,19 @@ with st.container(border=True):
         y="component_score",
         color="component",
         barmode="group",
-        color_discrete_sequence=["#9a3412", "#ea580c", "#f97316", "#14b8a6", "#2563eb"],
+        color_discrete_sequence=["#9a3412", "#ea0cb3", "#c4f916", "#ef9910", "#2563eb"],
     )
     st.plotly_chart(common_layout(fig, "Component scores for top-ranked states", "Component score", "State", 430), use_container_width=True)
+
+with st.container(border=False):
+   
+    monthly = monthly_stress_context(filtered, generation_monthly)
+
+        
 
 with st.container(border=True):
     section_header(
         3,
-        "Monthly demand and generation context",
-        "Generation is monthly, so this section compares monthly demand MWh with monthly total and renewable generation MWh.",
-    )
-    monthly = monthly_stress_context(filtered, generation_monthly)
-    if generation_monthly is None:
-        st.info("Add generation_monthly.parquet to show generation context.")
-    else:
-        selected_for_monthly = st.selectbox(
-            "State for monthly context",
-            options=scored["state"].tolist(),
-            index=0,
-        )
-        state_monthly = monthly[monthly["state"] == selected_for_monthly].copy()
-        state_monthly = state_monthly.sort_values("date")
-
-        m1, m2, m3 = st.columns(3)
-        latest = state_monthly.dropna(subset=["total_generation_mwh"]).tail(1)
-        if not latest.empty:
-            row = latest.iloc[0]
-            with m1:
-                metric_card("Latest gen/demand", f"{row['generation_to_demand']:.0%}")
-            with m2:
-                metric_card("Renewable/demand", f"{row['renewable_to_demand']:.0%}")
-            with m3:
-                metric_card("Renewable share", f"{row['renewable_share']:.0%}")
-
-        line_frame = state_monthly.melt(
-            id_vars=["date"],
-            value_vars=["demand_mwh", "total_generation_mwh", "renewable_generation_mwh"],
-            var_name="series",
-            value_name="mwh",
-        )
-        labels = {
-            "demand_mwh": "Demand",
-            "total_generation_mwh": "Total generation",
-            "renewable_generation_mwh": "Renewable generation",
-        }
-        line_frame["series"] = line_frame["series"].map(labels)
-        fig = px.line(
-            line_frame,
-            x="date",
-            y="mwh",
-            color="series",
-            color_discrete_map={
-                "Demand": "#111827",
-                "Total generation": "#0f766e",
-                "Renewable generation": "#22c55e",
-            },
-        )
-        st.plotly_chart(
-            common_layout(fig, f"{selected_for_monthly}: monthly demand vs generation", "MWh", "Month", 430),
-            use_container_width=True,
-        )
-
-with st.container(border=True):
-    section_header(
-        4,
         "Seasonal and ramp pressure",
         "These views show when stress appears, using hourly demand rolled into monthly peaks and large hourly changes.",
     )
@@ -342,7 +297,7 @@ with st.container(border=True):
     # --- Section 5: Ramp Pressure Explorer (interactive deep-dive) ---
 with st.container(border=True):
     section_header(
-        5,
+        4,
         "Ramp Events Explorer",
         "Inspect large hourly ramps and seasonal patterns; optionally overlay local weather for context.",
     )
@@ -406,7 +361,7 @@ with st.container(border=True):
             st.plotly_chart(common_layout(fig_events, fig_events.layout.title.text, "Ramp (GW)", "Timestamp", 360), use_container_width=True)
 
             # Select an event to inspect
-            options = [f"{r['timestamp']} — {r['ramp_gw']:.2f} GW" for _, r in top_events.iterrows()]
+            options = [f"{r['timestamp']} - {r['ramp_gw']:.2f} GW" for _, r in top_events.iterrows()]
             choice = st.selectbox("Inspect event", options=options, key="ramp_choice")
             chosen_idx = options.index(choice)
             ts = top_events.loc[chosen_idx, "timestamp"]
@@ -448,7 +403,7 @@ with st.container(border=True):
 
         # Scatter: monthly average ramp vs renewable share (if monthly generation exists)
         if generation_monthly is None:
-            st.info("Monthly generation data not available — upload `generation_monthly.parquet` to see ramp vs renewable scatter.")
+            st.info("Monthly generation data not available, upload `generation_monthly.parquet` to see ramp vs renewable scatter.")
         else:
             # monthly variable created earlier in Section 3; recompute per-state monthly if needed
             state_monthly = monthly[monthly["state"] == selected_ramp_state].copy()
@@ -470,7 +425,7 @@ with st.container(border=True):
     # --- Section 6: What-If simulator ---
 with st.container(border=True):
     section_header(
-        6,
+        5,
         "Grid-stress simulator",
         "Simulate simple mitigations (battery discharge and DR) and see peak reduction and prevented stress hours.",
     )
@@ -482,7 +437,7 @@ with st.container(border=True):
 
         - Try two simple actions: automatic demand cuts (DR) and battery discharge.
         - DR reduces the highest-demand hours; batteries discharge into the top hours until daily energy is used up.
-        - For clear results, use the stress percentile around 90–95 (this counts the high-demand hours we aim to reduce).
+        - For clear results, use the stress percent around 90–95 (this counts the high-demand hours we aim to reduce).
         - You will see original vs. new peak, peak reduction, prevented stress hours, and a daily dispatch timeline.
 
         This is a quick scenario tool, not a full power-system model.
@@ -499,15 +454,15 @@ with st.container(border=True):
         storage_hours = st.number_input("Storage duration (hours)", min_value=0.0, max_value=48.0, value=4.0, step=1.0, key="whatif_storage_hours")
         dr_power = st.number_input("DR max (MW)", min_value=0.0, max_value=20000.0, value=500.0, step=50.0, key="whatif_dr_power")
         dr_hours = st.number_input("DR hours/day", min_value=0, max_value=24, value=3, step=1, key="whatif_dr_hours")
-        pct = st.slider("Stress percentile (0-100%)", 0, 100, 95, key="whatif_stress_pct")
-        st.caption("Percentile of historical hourly demand: 0% = lowest observed hour, 100% = highest observed hour (peak). Typical values: 90–95%.")
+        pct = st.slider("Stress percent (0-100%)", 0, 100, 95, key="whatif_stress_pct")
+        st.caption("Percent of historical hourly demand: 0% = lowest observed hour, 100% = highest observed hour (peak). Typical values: 90–95%.")
         # Critical threshold indicator
         critical_pct = 80
-        st.markdown(f"**Critical level:** {critical_pct}% — hours at or above this are high stress.")
+        st.markdown(f"**Critical level:** {critical_pct}%; hours at or above this are high stress.")
         if pct >= critical_pct:
             st.warning(f"Selected stress = {pct}% (≥ {critical_pct}%). This focuses the simulation on very high-demand hours.")
         else:
-            st.info(f"Selected stress = {pct}% (< {critical_pct}%) — includes less extreme high-demand hours.")
+            st.info(f"Selected stress = {pct}% (< {critical_pct}%), includes less extreme high-demand hours.")
 
     with sc2:
         # Run simulation

@@ -35,7 +35,7 @@ pages = {
     "Analyze": [
         st.Page("pages/3_grid_stress.py", title="Grid Stress"),
         st.Page("pages/4_renewable_mismatch.py", title="Renewable Mismatch"),
-        st.Page("pages/6_what_if.py", title="What-If Simulator"),
+        #st.Page("pages/6_what_if.py", title="What-If Simulator"),
     ],
     "Forecast": [
         st.Page("pages/5_forecasting.py", title="Forecasting"),
